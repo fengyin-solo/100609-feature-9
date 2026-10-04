@@ -63,6 +63,34 @@
       </tbody>
     </table>
 
+    <section class="panel">
+      <h3 class="panel-title">摆渡车里程台账</h3>
+      <p class="page-desc">到站结论由摆渡车调度回写，维保侧只读这同一份台账，不另存里程副本。</p>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>车辆编号</th>
+            <th>最新里程读数</th>
+            <th>累计趟次</th>
+            <th>最近趟次</th>
+            <th>最近到站时间</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="item in mileageSummary" :key="item.vehicleNo">
+            <td>{{ item.vehicleNo }}</td>
+            <td>{{ item.mileage }}</td>
+            <td>{{ item.trips }}</td>
+            <td>{{ item.lastTripId }}</td>
+            <td>{{ item.lastArrivedAt }}</td>
+          </tr>
+          <tr v-if="!mileageSummary.length">
+            <td colspan="5" class="empty-state">暂无里程记录，摆渡车确认到站后自动入账</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
     <footer class="page-foot">
       <span>共 {{ total }} 条特种车辆维保记录</span>
       <span v-if="errorMessage" class="error-text">{{ errorMessage }}</span>
@@ -76,22 +104,28 @@ import { computed, onMounted, ref } from 'vue'
 import {
   downloadEntries,
   listEntries,
+  mileageSummaryByVehicle,
   moduleMeta,
   runAction as applyAction,
 } from '@/api/local-service'
-import type { EntryRow } from '@/data/types'
+import type { EntryRow, VehicleMileageSummary } from '@/data/types'
 
 const meta = moduleMeta('vehmaint')
 const columns = ["维保单号", "车辆编号", "维保类型", "进厂日期", "出厂日期", "维修项目", "承修单位", "维保状态"]
 const actions = ["送厂维保", "提交验收", "确认出厂"]
 const statuses = ["待进厂", "维保中", "待验收", "已出厂"]
-const stats = [{"label": "待进厂车辆", "value": 0}, {"label": "维保中车辆", "value": 0}, {"label": "待验收车辆", "value": 0}]
 
 const rows = ref<EntryRow[]>([])
 const total = ref(0)
 const errorMessage = ref('')
 const filters = ref<Record<string, string>>({})
 const filterFields = columns.slice(0, 3)
+const mileageSummary = ref<VehicleMileageSummary[]>([])
+const stats = computed(() => [
+  { label: '待进厂车辆', value: rows.value.filter((row) => String(row.status) === '待进厂').length },
+  { label: '维保中车辆', value: rows.value.filter((row) => String(row.status) === '维保中').length },
+  { label: '待验收车辆', value: rows.value.filter((row) => String(row.status) === '待验收').length },
+])
 const statusSummary = computed(() =>
   statuses.map((status: string) => ({
     status,
@@ -128,6 +162,7 @@ function reload() {
     const payload = listEntries(meta.key, filters.value)
     rows.value = payload.items
     total.value = payload.total
+    mileageSummary.value = mileageSummaryByVehicle()
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '特种车辆维保列表读取失败'
   }
