@@ -63,6 +63,35 @@
       </tbody>
     </table>
 
+    <section class="ledger-panel">
+      <h3>里程台账（摆渡车到站回写，维保只读这一份，不另记第二份里程）</h3>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>台账编号</th>
+            <th>车辆编号</th>
+            <th>趟次</th>
+            <th>里程读数</th>
+            <th>到站时间</th>
+            <th>来源</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="entry in ledgerRows" :key="String(entry.id)">
+            <td>{{ entry['台账编号'] }}</td>
+            <td>{{ entry['车辆编号'] }}</td>
+            <td>{{ entry['趟次'] }}</td>
+            <td>{{ entry['里程读数'] }}</td>
+            <td>{{ entry['到站时间'] }}</td>
+            <td>{{ entry['来源'] }}</td>
+          </tr>
+          <tr v-if="!ledgerRows.length">
+            <td colspan="6" class="empty-state">暂无里程入账，摆渡车确认到站后自动回写到这份台账</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
     <footer class="page-foot">
       <span>共 {{ total }} 条特种车辆维保记录</span>
       <span v-if="errorMessage" class="error-text">{{ errorMessage }}</span>
@@ -79,6 +108,7 @@ import {
   moduleMeta,
   runAction as applyAction,
 } from '@/api/local-service'
+import { listMileageLedger } from '@/data/mileage-ledger'
 import type { EntryRow } from '@/data/types'
 
 const meta = moduleMeta('vehmaint')
@@ -88,6 +118,7 @@ const statuses = ["待进厂", "维保中", "待验收", "已出厂"]
 const stats = [{"label": "待进厂车辆", "value": 0}, {"label": "维保中车辆", "value": 0}, {"label": "待验收车辆", "value": 0}]
 
 const rows = ref<EntryRow[]>([])
+const ledgerRows = ref<EntryRow[]>([])
 const total = ref(0)
 const errorMessage = ref('')
 const filters = ref<Record<string, string>>({})
@@ -128,6 +159,7 @@ function reload() {
     const payload = listEntries(meta.key, filters.value)
     rows.value = payload.items
     total.value = payload.total
+    ledgerRows.value = listMileageLedger()
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '特种车辆维保列表读取失败'
   }
